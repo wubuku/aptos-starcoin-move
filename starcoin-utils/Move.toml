@@ -1,0 +1,12 @@
+[package]
+name = "StarcoinUtils"
+version = "1.0.0"
+
+[addresses]
+std = "0x1"
+aptos_std = "0x1"
+starcoin_utils = "_"
+
+[dependencies]
+AptosStdlib = { local = "../../../aptos-labs/aptos-core/aptos-move/framework/aptos-stdlib" }
+MoveStdlib = { local = "../../../aptos-labs/aptos-core/aptos-move/framework/move-stdlib" }
