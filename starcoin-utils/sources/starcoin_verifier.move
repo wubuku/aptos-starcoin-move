@@ -1,8 +1,8 @@
 module starcoin_utils::starcoin_verifier {
     use starcoin_utils::bcs_deserializer;
     use starcoin_utils::bit;
+    use starcoin_utils::starcoin_address;
     use starcoin_utils::structured_hash;
-    use std::bcs;
     use std::hash;
     use std::option;
     use std::vector;
@@ -84,7 +84,7 @@ module starcoin_utils::starcoin_verifier {
     }
 
     public fun verify_resource_state_proof(state_proof: &StateProof, state_root: &vector<u8>,
-                                           account_address: address, resource_struct_tag: &vector<u8>,
+                                           account_address: &starcoin_address::StarcoinAddress, resource_struct_tag: &vector<u8>,
                                            state: &vector<u8>): bool {
         let accountState: AccountState = bcs_deserialize_account_state(&state_proof.account_state);
         assert!(vector::length(&accountState.storage_roots) > ACCOUNT_STORAGE_INDEX_RESOURCE, ERROR_ACCOUNT_STORAGE_ROOTS);
@@ -106,7 +106,7 @@ module starcoin_utils::starcoin_verifier {
         ok = verify_sm_proof_by_key_value(&state_proof.account_proof.siblings,
             &state_proof.account_proof.leaf,
             state_root,
-            &bcs::to_bytes<address>(&account_address), // account address as key
+            &starcoin_address::to_bcs_bytes(account_address), // Starcoin account address as key
             &state_proof.account_state,
         );
         ok
