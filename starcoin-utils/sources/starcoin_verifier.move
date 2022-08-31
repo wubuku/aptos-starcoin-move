@@ -11,13 +11,15 @@ module starcoin_utils::starcoin_verifier {
     const SPARSE_MERKLE_LEAF_NODE: vector<u8> = b"SparseMerkleLeafNode";
     const SPARSE_MERKLE_INTERNAL_NODE: vector<u8> = b"SparseMerkleInternalNode";
     const BLOB_HASH_PREFIX: vector<u8> = b"Blob";
-    const DEFAULT_VALUE: vector<u8> = x"";
+    const DEFAULT_BYTES_VALUE: vector<u8> = x"";
     const ACCOUNT_STORAGE_INDEX_RESOURCE: u64 = 1;
+    const KEPT_VM_STATUS_EXECUTED: u64 = 0;
+    const SPARSE_MERKLE_PLACEHOLDER_HASH_LITERAL: vector<u8> = b"SPARSE_MERKLE_PLACEHOLDER_HASH";
+
     const ERROR_ACCOUNT_STORAGE_ROOTS: u64 = 101;
     const ERROR_LITERAL_HASH_WRONG_LENGTH: u64 = 102;
     const ERROR_ACCUMULATOR_PROOF_TOO_LONG: u64 = 103;
-    const SPARSE_MERKLE_PLACEHOLDER_HASH_LITERAL: vector<u8> = b"SPARSE_MERKLE_PLACEHOLDER_HASH";
-
+    const ERROR_KEPT_VM_STATUS: u64 = 104;
 
     struct AccountState has store, drop, copy {
         storage_roots: vector<option::Option<vector<u8>>>,
@@ -94,6 +96,56 @@ module starcoin_utils::starcoin_verifier {
         }
     }
 
+    struct TransactionInfo has store, drop, copy {
+        transaction_hash: vector<u8>,
+        state_root_hash: vector<u8>,
+        event_root_hash: vector<u8>,
+        gas_used: u64,
+        status: KeptVMStatus,
+    }
+
+    struct KeptVMStatus has store, drop, copy {
+        variant_index: u64,
+    }
+
+    public fun bcs_deserialize_executed_transaction_info(data: &vector<u8>): TransactionInfo {
+        let t = bcs_deserialize_transaction_info(data);
+        assert!(t.status.variant_index == KEPT_VM_STATUS_EXECUTED, ERROR_KEPT_VM_STATUS);
+        t
+    }
+
+    public fun bcs_deserialize_transaction_info(data: &vector<u8>): TransactionInfo {
+        let offset = 0;
+        let (transaction_hash, offset) = bcs_deserializer::deserialize_bytes(data, offset);
+        let (state_root_hash, offset) = bcs_deserializer::deserialize_bytes(data, offset);
+        let (event_root_hash, offset) = bcs_deserializer::deserialize_bytes(data, offset);
+        let (gas_used, offset) = bcs_deserializer::deserialize_u64(data, offset);
+        let (variant_index, offset) = bcs_deserializer::deserialize_variant_index(data, offset);
+        let status = KeptVMStatus {
+            variant_index,
+        };
+        _ = offset;
+        TransactionInfo {
+            transaction_hash,
+            state_root_hash,
+            event_root_hash,
+            gas_used,
+            status,
+        }
+    }
+
+    public fun get_transaction_info_event_root_hash(t: TransactionInfo): vector<u8> {
+        t.event_root_hash
+    }
+
+    fun hash_transaction_info_bcs_bytes(bcs_bytes: vector<u8>): vector<u8> {
+        structured_hash::hash_bcs_byets(b"TransactionInfo", bcs_bytes)
+    }
+
+    fun hash_contract_event_bcs_bytes(bcs_bytes: vector<u8>): vector<u8> {
+        structured_hash::hash_bcs_byets(b"ContractEvent", bcs_bytes)
+    }
+
     public fun verify_resource_state_proof(state_proof: &StateProof, state_root: &vector<u8>,
                                            account_address: &starcoin_address::Address, resource_struct_tag: &vector<u8>,
                                            state: &vector<u8>): bool {
@@ -127,7 +179,7 @@ module starcoin_utils::starcoin_verifier {
     public fun verify_sm_proof_by_key_value(side_nodes: &vector<vector<u8>>, leaf_data: &SMTNode, expected_root: &vector<u8>, key: &vector<u8>, value: &vector<u8>): bool {
         let path = hash_key(key);
         let current_hash: vector<u8>;
-        if (*value == DEFAULT_VALUE) {
+        if (*value == DEFAULT_BYTES_VALUE) {
             // Non-membership proof.
             if (empty_smt_node() == *leaf_data) {
                 current_hash = placeholder();
@@ -203,6 +255,23 @@ module starcoin_utils::starcoin_verifier {
         structured_hash::hash(BLOB_HASH_PREFIX, value)
     }
 
+    public fun verify_event_proof(txn_accumulator_root: &vector<u8>,
+                                  txn_proof: &AccumulatorProof,
+                                  txn_info_bcs_byets: &vector<u8>,
+                                  txn_global_index: u64,
+                                  event_proof: &AccumulatorProof,
+                                  contract_event_bcs_bytes: &vector<u8>,
+                                  event_index: u64): bool {
+        let txn_info_hash = hash_transaction_info_bcs_bytes(*txn_info_bcs_byets);
+        let b = verify_accumulator(txn_proof, txn_accumulator_root, &txn_info_hash, txn_global_index);
+        if (!b) {
+            return false
+        };
+        let txn_info = bcs_deserialize_executed_transaction_info(txn_info_bcs_byets);
+        let contract_event_hash = hash_contract_event_bcs_bytes(*contract_event_bcs_bytes);
+        let b = verify_accumulator(event_proof, &txn_info.event_root_hash, &contract_event_hash, event_index);
+        b
+    }
 
     public fun verify_accumulator(proof: &AccumulatorProof, expected_root: &vector<u8>, hash: &vector<u8>, index: u64): bool {
         let length = vector::length(&proof.siblings);
@@ -211,18 +280,15 @@ module starcoin_utils::starcoin_verifier {
         let current_hash = *hash;
         let i = 0;
         while (i < length) {
-            //debug::print(&current_idx);
-            //debug::print(&current_hash);
             let s = vector::borrow(&proof.siblings, i);
-            current_hash = internal_hash(current_idx, &current_hash, s);
+            current_hash = accumulator_internal_hash(current_idx, &current_hash, s);
             current_idx = current_idx / 2;
             i = i + 1;
         };
-        //debug::print(&current_hash);
         current_hash == *expected_root
     }
 
-    fun internal_hash(index: u64, element: &vector<u8>, sibling: &vector<u8>): vector<u8> {
+    fun accumulator_internal_hash(index: u64, element: &vector<u8>, sibling: &vector<u8>): vector<u8> {
         if (index % 2 == 0) {
             parent_hash(element, sibling)
         } else {
@@ -231,8 +297,6 @@ module starcoin_utils::starcoin_verifier {
     }
 
     fun parent_hash(left: &vector<u8>, right: &vector<u8>): vector<u8> {
-        //debug::print(left);
-        //debug::print(right);
         let c = concat(*left, *right);
         hash::sha3_256(c)
     }

@@ -185,4 +185,71 @@ module starcoin_utils::starcoin_verifier_tests {
         let b = starcoin_verifier::verify_accumulator(&proof, &expected_root, &hash, index);
         assert!(b, 101)
     }
+
+
+    #[test]
+    fun test_verify_event_proof() {
+        let txn_proof_siblings = vector::empty<vector<u8>>();
+        vector::push_back(&mut txn_proof_siblings, x"414343554d554c41544f525f504c414345484f4c4445525f4841534800000000");
+        vector::push_back(&mut txn_proof_siblings, x"414343554d554c41544f525f504c414345484f4c4445525f4841534800000000");
+        vector::push_back(&mut txn_proof_siblings, x"6eee994de6e916476aa77459d1fcd0719d9a6f36b3b8ae74e9cbad6d07065400");
+        vector::push_back(&mut txn_proof_siblings, x"eab43f07f813200e3f810aea74a6af91532c17ed4ce4756a20adf33dbe183c2e");
+        vector::push_back(&mut txn_proof_siblings, x"7f94b361c5027c06fafb03b57b1a1b8879c77e3eaf9bba0d896a33b4aeffa1a1");
+        vector::push_back(&mut txn_proof_siblings, x"59ec68da7c6f9d7097d280ac1fab2ee18d91e0cfa5d64a4fbdb6c712e82c7bf2");
+        vector::push_back(&mut txn_proof_siblings, x"1b47606d7b71ee665bd169855e0115296ccf9fdb2463f4fb2f9994e30b0476aa");
+        vector::push_back(&mut txn_proof_siblings, x"ce1c3f9ea3a484f175254b7ae3009781e87218d46f24381dcd230ddcdff117e3");
+        vector::push_back(&mut txn_proof_siblings, x"414343554d554c41544f525f504c414345484f4c4445525f4841534800000000");
+        vector::push_back(&mut txn_proof_siblings, x"414343554d554c41544f525f504c414345484f4c4445525f4841534800000000");
+        vector::push_back(&mut txn_proof_siblings, x"86667ea18999fbcad72c7eda474c2212fa0effdaaa964205f803ad250e03abfe");
+        vector::push_back(&mut txn_proof_siblings, x"414343554d554c41544f525f504c414345484f4c4445525f4841534800000000");
+        vector::push_back(&mut txn_proof_siblings, x"50d7486d96eb7a6f76a399a41fad052d2a64e1d0b6de37f34dec53bab06b9924");
+        vector::push_back(&mut txn_proof_siblings, x"48583f70ae30de2bc4617a5eb95e17bb7436987e2fb04c8c6e3dedf185c87b7c");
+        vector::push_back(&mut txn_proof_siblings, x"414343554d554c41544f525f504c414345484f4c4445525f4841534800000000");
+        vector::push_back(&mut txn_proof_siblings, x"0c2f667f50ca04d5d3547b81ae0a61fb7718f074db01bd6fe75559f4860f929a");
+        vector::push_back(&mut txn_proof_siblings, x"479474a6b9f65dd8ebddeba92fef7e0e4f83639993adf88f9041cf188d6e4da3");
+        vector::push_back(&mut txn_proof_siblings, x"f01372f8a7e518557ca8b3bc471397a3a0c33216e92934cf3653cb8b11c69c0a");
+        vector::push_back(&mut txn_proof_siblings, x"095ce71d1dcd45d3381927d6d24d15b72ccf17a27342cc510fa54ade551ca27e");
+        vector::push_back(&mut txn_proof_siblings, x"4871d81d292baa485e6aed64e1e04454f2103f153b26aa6839492765ddef060f");
+        vector::push_back(&mut txn_proof_siblings, x"0bf9a0eaacd7db0d51ac57142a5a703f5b3f88c57725e0fc28196000b686310b");
+        vector::push_back(&mut txn_proof_siblings, x"8079193f2a30402bd81970a0f79fbe752587ed215ec8ab1ba056d309a5015eca");
+        vector::push_back(&mut txn_proof_siblings, x"b201b5e82b25765089b529c99c23c8851b5c2b43aa7ee803551a5231bc6594f8");
+
+        let txn_accumulator_root = x"9e9dc633087fcdeec84f6306900c76298e6667b53a743e953dbb333c74994243";
+        let txn_proof = starcoin_verifier::new_accumulator_proof(txn_proof_siblings);
+        let txn_info_bcs_byets = x"20a3cac3fc94d4e68de66812b3bb638e82211c26ed0e879eb368196bd849eea86a206f9ff224f38492ac5b1d9369d17c93d2540d569b7b98b386e2d9e165f441628520229243707efa8c9c303e9325f758148dbc8b1e7ea3e96846cb2711dd1bf3a2626b6c0f000000000000";
+        let txn_global_index: u64 = 8369404;
+
+        let event_proof_siblings = vector::empty<vector<u8>>();
+        vector::push_back(&mut event_proof_siblings, x"e6f83b89b939d718d3d1ecbabcdb8cebf54d030015c252c8deda7f1a1ab9c43e");
+        vector::push_back(&mut event_proof_siblings, x"d97c6dfc606206f7a5f4b27ddf56f252a368cf81ab91bd51f7565f839b7bcefd");
+        vector::push_back(&mut event_proof_siblings, x"da7936f4309b7c79991d9bb7143bd2129735dd9343aafef06c0796740861eb49");
+
+        let event_proof = starcoin_verifier::new_accumulator_proof(event_proof_siblings);
+        let contract_event_bcs_bytes = x"0018000000000000000076a45fbf9631f68eb09812a21452e38ee5350000000000000700000000000000000000000000000001074163636f756e740d57697468647261774576656e74002b4120db000100000000000000000000008c109349c6bd91411d6bc962e080c4a30453544152045354415200";
+        let event_index: u64 = 1;
+
+        let b = starcoin_verifier::verify_event_proof(
+            &txn_accumulator_root,
+            &txn_proof,
+            &txn_info_bcs_byets,
+            txn_global_index,
+            &event_proof,
+            &contract_event_bcs_bytes,
+            event_index,
+        );
+        assert!(b, 101)
+    }
+
+    #[test]
+    fun test_bcs_deserialize_transaction_info() {
+        let txn_data = x"20a3cac3fc94d4e68de66812b3bb638e82211c26ed0e879eb368196bd849eea86a206f9ff224f38492ac5b1d9369d17c93d2540d569b7b98b386e2d9e165f441628520229243707efa8c9c303e9325f758148dbc8b1e7ea3e96846cb2711dd1bf3a2626b6c0f000000000000";
+        let txn_info = starcoin_verifier::bcs_deserialize_executed_transaction_info(&txn_data);
+        //debug::print(&starcoin_verifier::get_transaction_info_event_root_hash(txn_info));
+        let expected_hash = x"229243707efa8c9c303e9325f758148dbc8b1e7ea3e96846cb2711dd1bf3a262";
+        //debug::print(&expected_hash);
+        assert!(expected_hash == starcoin_verifier::get_transaction_info_event_root_hash(txn_info), 101);
+        //debug::print(&starcoin_verifier::hash_transaction_info_bcs_bytes(txn_data));
+        //let expected_txn_info_hash = x"aeb3fb4cd22b635a6a2947e027af41ef881d874fb7ddf289b1865d25c77ec13b";
+        //assert!(expected_txn_info_hash == starcoin_verifier::hash_transaction_info_bcs_bytes(txn_data), 101)
+    }
 }

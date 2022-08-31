@@ -1,10 +1,8 @@
 module starcoin_utils::bcs_deserializer {
+    use starcoin_utils::starcoin_address;
     use std::error;
     use std::option;
     use std::vector;
-
-    //use std::bcs;
-    //use 0x1::BitOperators;
 
     const ERR_INPUT_NOT_LARGE_ENOUGH: u64 = 201;
     const ERR_UNEXPECTED_BOOL_VALUE: u64 = 205;
@@ -74,10 +72,10 @@ module starcoin_utils::bcs_deserializer {
         }
     }
 
-    //    public fun deserialize_address(input: &vector<u8>, offset: u64): (address, u64) {
-    //        let (content, new_offset) = deserialize_16_bytes(input, offset);
-    //        (bcs::to_address(content), new_offset)
-    //    }
+    public fun deserialize_starcoin_address(input: &vector<u8>, offset: u64): (starcoin_address::Address, u64) {
+        let (content, new_offset) = deserialize_16_bytes(input, offset);
+        (starcoin_address::new_address(content), new_offset)
+    }
 
     public fun deserialize_16_bytes(input: &vector<u8>, offset: u64): (vector<u8>, u64) {
         let content = get_n_bytes(input, offset, 16);
@@ -117,6 +115,10 @@ module starcoin_utils::bcs_deserializer {
 
     public fun deserialize_option_tag(input: &vector<u8>, offset: u64): (bool, u64) {
         deserialize_bool(input, offset)
+    }
+
+    public fun deserialize_variant_index(input: &vector<u8>, offset: u64): (u64, u64) {
+        deserialize_uleb128_as_u32(input, offset)
     }
 
     public fun deserialize_len(input: &vector<u8>, offset: u64): (u64, u64) {
