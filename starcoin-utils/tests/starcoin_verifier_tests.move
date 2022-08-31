@@ -1,7 +1,7 @@
 #[test_only]
 module starcoin_utils::starcoin_verifier_tests {
-    use aptos_std::debug;
     use starcoin_utils::starcoin_address;
+    use starcoin_utils::starcoin_event;
     use starcoin_utils::starcoin_verifier;
     use std::vector;
 
@@ -75,7 +75,7 @@ module starcoin_utils::starcoin_verifier_tests {
             &resource_struct_tag,
             &state,
         );
-        debug::print(&b);
+        //debug::print(&b);
         assert!(b, 111);
     }
 
@@ -114,7 +114,7 @@ module starcoin_utils::starcoin_verifier_tests {
         let value = x"fa000000000000007b161ceeef010000000000000000000000000000000000000000000000000000";
 
         let b = starcoin_verifier::verify_sm_proof_by_key_value(&side_nodes, &leaf_node, &expected_root, &key, &value);
-        debug::print<bool>(&b);
+        //debug::print<bool>(&b);
         assert!(b, 111)
     }
 
@@ -134,6 +134,21 @@ module starcoin_utils::starcoin_verifier_tests {
         b = starcoin_verifier::verify_sm_proof_by_key_value(&side_nodes, &leaf_data, &expected_root, &key, &value);
         assert!(!b, 111);
     }
+
+
+    #[test]
+    fun test_bcs_deserialize_transaction_info() {
+        let txn_data = x"20a3cac3fc94d4e68de66812b3bb638e82211c26ed0e879eb368196bd849eea86a206f9ff224f38492ac5b1d9369d17c93d2540d569b7b98b386e2d9e165f441628520229243707efa8c9c303e9325f758148dbc8b1e7ea3e96846cb2711dd1bf3a2626b6c0f000000000000";
+        let txn_info = starcoin_verifier::bcs_deserialize_executed_transaction_info(&txn_data);
+        //debug::print(&starcoin_verifier::get_transaction_info_event_root_hash(txn_info));
+        let expected_hash = x"229243707efa8c9c303e9325f758148dbc8b1e7ea3e96846cb2711dd1bf3a262";
+        //debug::print(&expected_hash);
+        assert!(expected_hash == starcoin_verifier::get_transaction_info_event_root_hash(txn_info), 101);
+        //debug::print(&starcoin_verifier::hash_transaction_info_bcs_bytes(txn_data));
+        //let expected_txn_info_hash = x"aeb3fb4cd22b635a6a2947e027af41ef881d874fb7ddf289b1865d25c77ec13b";
+        //assert!(expected_txn_info_hash == starcoin_verifier::hash_transaction_info_bcs_bytes(txn_data), 101)
+    }
+
 
     #[test]
     fun test_verify_accumulator() {
@@ -241,15 +256,17 @@ module starcoin_utils::starcoin_verifier_tests {
     }
 
     #[test]
-    fun test_bcs_deserialize_transaction_info() {
-        let txn_data = x"20a3cac3fc94d4e68de66812b3bb638e82211c26ed0e879eb368196bd849eea86a206f9ff224f38492ac5b1d9369d17c93d2540d569b7b98b386e2d9e165f441628520229243707efa8c9c303e9325f758148dbc8b1e7ea3e96846cb2711dd1bf3a2626b6c0f000000000000";
-        let txn_info = starcoin_verifier::bcs_deserialize_executed_transaction_info(&txn_data);
-        //debug::print(&starcoin_verifier::get_transaction_info_event_root_hash(txn_info));
-        let expected_hash = x"229243707efa8c9c303e9325f758148dbc8b1e7ea3e96846cb2711dd1bf3a262";
-        //debug::print(&expected_hash);
-        assert!(expected_hash == starcoin_verifier::get_transaction_info_event_root_hash(txn_info), 101);
-        //debug::print(&starcoin_verifier::hash_transaction_info_bcs_bytes(txn_data));
-        //let expected_txn_info_hash = x"aeb3fb4cd22b635a6a2947e027af41ef881d874fb7ddf289b1865d25c77ec13b";
-        //assert!(expected_txn_info_hash == starcoin_verifier::hash_transaction_info_bcs_bytes(txn_data), 101)
+    fun test_bcs_deserialize_contract_event() {
+        let contract_event_bcs_bytes = x"0018000000000000000076a45fbf9631f68eb09812a21452e38ee5350000000000000700000000000000000000000000000001074163636f756e740d57697468647261774576656e74002b4120db000100000000000000000000008c109349c6bd91411d6bc962e080c4a30453544152045354415200";
+        let contract_event = starcoin_event::bcs_deserialize_contract_event(&contract_event_bcs_bytes);
+        //0x00000000000000000000000000000001::Account::WithdrawEvent
+        let expected_event_type_tag_data = x"0700000000000000000000000000000001074163636f756e740d57697468647261774576656e7400";
+        assert!(expected_event_type_tag_data == starcoin_event::get_contract_event_type_tag_data(contract_event), 101);
+        let expected_event_data = x"4120db000100000000000000000000008c109349c6bd91411d6bc962e080c4a30453544152045354415200";
+        assert!(expected_event_data == starcoin_event::get_contract_event_event_data(contract_event), 101);
+        let expected_event_key = x"000000000000000076a45fbf9631f68eb09812a21452e38e";
+        assert!(expected_event_key == starcoin_event::get_contract_event_key(contract_event), 101);
+        let expected_sequence_number = 13797;
+        assert!(expected_sequence_number == starcoin_event::get_contract_event_sequence_number(contract_event), 101);
     }
 }

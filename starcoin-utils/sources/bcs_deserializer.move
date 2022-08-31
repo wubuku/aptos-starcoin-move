@@ -2,6 +2,7 @@ module starcoin_utils::bcs_deserializer {
     use starcoin_utils::starcoin_address;
     use std::error;
     use std::option;
+    use std::string;
     use std::vector;
 
     const ERR_INPUT_NOT_LARGE_ENOUGH: u64 = 201;
@@ -80,6 +81,11 @@ module starcoin_utils::bcs_deserializer {
     public fun deserialize_16_bytes(input: &vector<u8>, offset: u64): (vector<u8>, u64) {
         let content = get_n_bytes(input, offset, 16);
         (content, offset + 16)
+    }
+
+    public fun deserialize_string(input: &vector<u8>, offset: u64): (string::String, u64) {
+        let (v, new_offset) = deserialize_bytes(input, offset);
+        (string::utf8(v), new_offset)
     }
 
     public fun deserialize_bytes(input: &vector<u8>, offset: u64): (vector<u8>, u64) {
