@@ -15,6 +15,7 @@ module starcoin_utils::starcoin_verifier {
     const ACCOUNT_STORAGE_INDEX_RESOURCE: u64 = 1;
     const ERROR_ACCOUNT_STORAGE_ROOTS: u64 = 101;
     const ERROR_LITERAL_HASH_WRONG_LENGTH: u64 = 102;
+    const ERROR_ACCUMULATOR_PROOF_TOO_LONG: u64 = 103;
     const SPARSE_MERKLE_PLACEHOLDER_HASH_LITERAL: vector<u8> = b"SPARSE_MERKLE_PLACEHOLDER_HASH";
 
 
@@ -80,6 +81,16 @@ module starcoin_utils::starcoin_verifier {
         SMTNode {
             hash1: vector::empty(),
             hash2: vector::empty(),
+        }
+    }
+
+    struct AccumulatorProof has store, drop, copy {
+        siblings: vector<vector<u8>>,
+    }
+
+    public fun new_accumulator_proof(siblings: vector<vector<u8>>): AccumulatorProof {
+        AccumulatorProof {
+            siblings,
         }
     }
 
@@ -172,10 +183,10 @@ module starcoin_utils::starcoin_verifier {
 
     public fun create_literal_hash(word: &vector<u8>): vector<u8> {
         if (vector::length(word)  <= 32) {
-            let lenZero = 32 - vector::length(word);
+            let zero_len = 32 - vector::length(word);
             let i = 0;
             let r = *word;
-            while (i < lenZero) {
+            while (i < zero_len) {
                 vector::push_back(&mut r, 0);
                 i = i + 1;
             };
@@ -190,5 +201,44 @@ module starcoin_utils::starcoin_verifier {
 
     fun hash_value(value: &vector<u8>): vector<u8> {
         structured_hash::hash(BLOB_HASH_PREFIX, value)
+    }
+
+
+    public fun verify_accumulator(proof: &AccumulatorProof, expected_root: &vector<u8>, hash: &vector<u8>, index: u64): bool {
+        let length = vector::length(&proof.siblings);
+        assert!(length <= 63, ERROR_ACCUMULATOR_PROOF_TOO_LONG);
+        let current_idx = index;
+        let current_hash = *hash;
+        let i = 0;
+        while (i < length) {
+            //debug::print(&current_idx);
+            //debug::print(&current_hash);
+            let s = vector::borrow(&proof.siblings, i);
+            current_hash = internal_hash(current_idx, &current_hash, s);
+            current_idx = current_idx / 2;
+            i = i + 1;
+        };
+        //debug::print(&current_hash);
+        current_hash == *expected_root
+    }
+
+    fun internal_hash(index: u64, element: &vector<u8>, sibling: &vector<u8>): vector<u8> {
+        if (index % 2 == 0) {
+            parent_hash(element, sibling)
+        } else {
+            parent_hash(sibling, element)
+        }
+    }
+
+    fun parent_hash(left: &vector<u8>, right: &vector<u8>): vector<u8> {
+        //debug::print(left);
+        //debug::print(right);
+        let c = concat(*left, *right);
+        hash::sha3_256(c)
+    }
+
+    fun concat(v1: vector<u8>, v2: vector<u8>): vector<u8> {
+        vector::append(&mut v1, v2);
+        v1
     }
 }
