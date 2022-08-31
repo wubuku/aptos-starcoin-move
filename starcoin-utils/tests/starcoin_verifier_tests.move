@@ -165,9 +165,24 @@ module starcoin_utils::starcoin_verifier_tests {
 
         let expected_root = x"9e9dc633087fcdeec84f6306900c76298e6667b53a743e953dbb333c74994243";
         let hash = x"aeb3fb4cd22b635a6a2947e027af41ef881d874fb7ddf289b1865d25c77ec13b";
-        let transaction_global_index = 8369404;
+        let index = 8369404;
 
-        let b = starcoin_verifier::verify_accumulator(&proof, &expected_root, &hash, transaction_global_index);
+        let b = starcoin_verifier::verify_accumulator(&proof, &expected_root, &hash, index);
+        assert!(b, 101)
+    }
+
+    fun test_verify_accumulator_2() {
+        let siblings = vector::empty<vector<u8>>();
+        vector::push_back(&mut siblings, x"e6f83b89b939d718d3d1ecbabcdb8cebf54d030015c252c8deda7f1a1ab9c43e");
+        vector::push_back(&mut siblings, x"d97c6dfc606206f7a5f4b27ddf56f252a368cf81ab91bd51f7565f839b7bcefd");
+        vector::push_back(&mut siblings, x"da7936f4309b7c79991d9bb7143bd2129735dd9343aafef06c0796740861eb49");
+        let proof = starcoin_verifier::new_accumulator_proof(siblings);
+
+        let expected_root = x"229243707efa8c9c303e9325f758148dbc8b1e7ea3e96846cb2711dd1bf3a262";
+        let hash = x"a9548c5b167eb39a8acc1c5aa90b7aaa8e8ce0d0bf281cc6b89d45fb6684af61";
+        let index = 1;
+
+        let b = starcoin_verifier::verify_accumulator(&proof, &expected_root, &hash, index);
         assert!(b, 101)
     }
 }

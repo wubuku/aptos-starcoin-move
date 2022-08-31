@@ -95,7 +95,7 @@ module starcoin_utils::starcoin_verifier {
     }
 
     public fun verify_resource_state_proof(state_proof: &StateProof, state_root: &vector<u8>,
-                                           account_address: &starcoin_address::StarcoinAddress, resource_struct_tag: &vector<u8>,
+                                           account_address: &starcoin_address::Address, resource_struct_tag: &vector<u8>,
                                            state: &vector<u8>): bool {
         let accountState: AccountState = bcs_deserialize_account_state(&state_proof.account_state);
         assert!(vector::length(&accountState.storage_roots) > ACCOUNT_STORAGE_INDEX_RESOURCE, ERROR_ACCOUNT_STORAGE_ROOTS);
